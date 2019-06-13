@@ -162,7 +162,9 @@ class CFG
 
    void addEdge(TR::CFGEdge *e);
    TR::CFGEdge *addEdge(TR::CFGNode *f, TR::CFGNode *t, TR_AllocationKind = heapAlloc);
+   TR::CFGEdge *addEdge(TR::CFGNode *f, TR::CFGNode *t, TR::Region &region);
    void addExceptionEdge(TR::CFGNode *f, TR::CFGNode *t, TR_AllocationKind = heapAlloc);
+   void addExceptionEdge(TR::CFGNode *f, TR::CFGNode *t, TR::Region &region);
    void addSuccessorEdges(TR::Block * block);
 
    void copyExceptionSuccessors(TR::CFGNode *from, TR::CFGNode *to, bool (*predicate)(TR::CFGEdge *) = OMR::alwaysTrue);
