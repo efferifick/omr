@@ -306,6 +306,11 @@ class CFG
    //
    void getBranchCountersFromProfilingData(TR::Node *node, TR::Block *block, int32_t *taken, int32_t *notTaken) { return; }
 
+private:
+   void addEdgeChecks(TR::CFGNode *f, TR::CFGNode *t);
+   bool shouldAddExceptionEdge(TR::CFGNode *f, TR::CFGNode *t);
+   void addExceptionEdgeToStructure(TR::CFGNode *f, TR::CFGNode *t, TR::CFGEdge *e);
+
 protected:
 
    TR::Compilation *_compilation;
