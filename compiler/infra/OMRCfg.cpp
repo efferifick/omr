@@ -146,7 +146,26 @@ OMR::CFG::addEdge(TR::CFGEdge *e)
 
 
 TR::CFGEdge *
-OMR::CFG::addEdge(TR::CFGNode *f, TR::CFGNode *t, TR_AllocationKind allocKind)
+OMR::CFG::addEdge(TR::CFGNode *f, TR::CFGNode *t, TR_AllocationKind allocKind, bool useInternalRegion)
+   {
+   addEdgeChecks(f, t);
+   TR::CFGEdge * e = NULL;
+   if (useInternalRegion)
+      {
+      TR_ASSERT_FATAL(_cfgRegion, "Memory region has not been set");
+      e = TR::CFGEdge::createEdge(f, t, *_cfgRegion);
+      }
+   else
+      {
+      e = TR::CFGEdge::createEdge(f, t, trMemory(), allocKind);
+      }
+   addEdge(e);
+   return e;
+
+   }
+
+void
+OMR::CFG::addEdgeChecks(TR::CFGNode *f, TR::CFGNode *t)
    {
 
    if (comp()->getOption(TR_TraceAddAndRemoveEdge))
@@ -156,9 +175,6 @@ OMR::CFG::addEdge(TR::CFGNode *f, TR::CFGNode *t, TR_AllocationKind allocKind)
 
    TR_ASSERT(!f->hasExceptionSuccessor(t), "adding a non exception edge when there's already an exception edge");
 
-   TR::CFGEdge * e = TR::CFGEdge::createEdge(f, t, trMemory(), allocKind);
-   addEdge(e);
-   return e;
    }
 
 
@@ -166,7 +182,29 @@ void
 OMR::CFG::addExceptionEdge(
       TR::CFGNode *f,
       TR::CFGNode *t,
-      TR_AllocationKind allocKind)
+      TR_AllocationKind allocKind,
+      bool useInternalRegion)
+   {
+   if (!shouldAddExceptionEdge(f, t)) return;
+
+   TR::CFGEdge* e = NULL;
+   if (useInternalRegion)
+      {
+      TR_ASSERT_FATAL(_cfgRegion, "Memory region has not been set");
+      e = TR::CFGEdge::createExceptionEdge(f,t, *_cfgRegion);
+      }
+   else
+      {
+      e = TR::CFGEdge::createExceptionEdge(f,t, trMemory(), allocKind);
+      }
+   _numEdges++;
+   addExceptionEdgeToStructure(f, t, e);
+   }
+
+bool
+OMR::CFG::shouldAddExceptionEdge(
+      TR::CFGNode *f,
+      TR::CFGNode *t)
    {
    if (comp()->getOption(TR_TraceAddAndRemoveEdge))
       {
@@ -178,7 +216,7 @@ OMR::CFG::addExceptionEdge(
    for (auto e = f->getExceptionSuccessors().begin(); e != f->getExceptionSuccessors().end(); ++e)
       {
       TR::Block * existingCatchBlock = toBlock((*e)->getTo());
-      if (newCatchBlock == existingCatchBlock) return;
+      if (newCatchBlock == existingCatchBlock) return false;
 
       // OSR exception edges are special and we do not want any 'optimization' done to them
       // from the following special checks
@@ -209,12 +247,15 @@ OMR::CFG::addExceptionEdge(
             {
             traceMsg(comp(),"\nAddition of exception edge aborted - existing catch alredy handles this case!");
             }
-         return;
+         return false;
          }
       }
-   TR::CFGEdge* e = TR::CFGEdge::createExceptionEdge(f,t, trMemory(), allocKind);
-   _numEdges++;
+   return true;
+   }
 
+void
+OMR::CFG::addExceptionEdgeToStructure(TR::CFGNode *f, TR::CFGNode *t, TR::CFGEdge *e)
+   {
    // Tell the control tree to modify the structures containing this edge
    //
    if (getStructure() != NULL)
@@ -227,8 +268,6 @@ OMR::CFG::addExceptionEdge(
          }
       }
    }
-
-
 
 void
 OMR::CFG::addSuccessorEdges(TR::Block * block)

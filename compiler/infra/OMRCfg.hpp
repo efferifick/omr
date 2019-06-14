@@ -103,6 +103,37 @@ class CFG
       _pStart(NULL),
       _pEnd(NULL),
       _structureRegion(c->trMemory()->heapMemoryRegion()),
+      _cfgRegion(NULL),
+      _nextNodeNumber(0),
+      _numEdges(0),
+      _mightHaveUnreachableBlocks(false),
+      _doesHaveUnreachableBlocks(false),
+      _removingUnreachableBlocks(false),
+      _ignoreUnreachableBlocks(false),
+      _removeEdgeNestingDepth(0),
+      _forwardTraversalOrder(NULL),
+      _backwardTraversalOrder(NULL),
+      _forwardTraversalLength(0),
+      _backwardTraversalLength(0),
+      _maxFrequency(-1),
+      _maxEdgeFrequency(-1),
+      _oldMaxFrequency(-1),
+      _oldMaxEdgeFrequency(-1),
+      _frequencySet(NULL),
+      _calledFrequency(0),
+      _initialBlockFrequency(-1),
+      _edgeProbabilities(NULL)
+      {
+      }
+
+   CFG(TR::Compilation *c, TR::ResolvedMethodSymbol *m, TR::Region *region) :
+      _compilation(c),
+      _method(m),
+      _rootStructure(NULL),
+      _pStart(NULL),
+      _pEnd(NULL),
+      _structureRegion(c->trMemory()->heapMemoryRegion()),
+      _cfgRegion(region),
       _nextNodeNumber(0),
       _numEdges(0),
       _mightHaveUnreachableBlocks(false),
@@ -161,8 +192,8 @@ class CFG
    void removeStructureSubGraphNodes(TR_StructureSubGraphNode *node);
 
    void addEdge(TR::CFGEdge *e);
-   TR::CFGEdge *addEdge(TR::CFGNode *f, TR::CFGNode *t, TR_AllocationKind = heapAlloc);
-   void addExceptionEdge(TR::CFGNode *f, TR::CFGNode *t, TR_AllocationKind = heapAlloc);
+   TR::CFGEdge *addEdge(TR::CFGNode *f, TR::CFGNode *t, TR_AllocationKind = heapAlloc, bool useInternalRegion = false);
+   void addExceptionEdge(TR::CFGNode *f, TR::CFGNode *t, TR_AllocationKind = heapAlloc, bool useInternalRegion = false);
    void addSuccessorEdges(TR::Block * block);
 
    void copyExceptionSuccessors(TR::CFGNode *from, TR::CFGNode *to, bool (*predicate)(TR::CFGEdge *) = OMR::alwaysTrue);
@@ -304,6 +335,11 @@ class CFG
    //
    void getBranchCountersFromProfilingData(TR::Node *node, TR::Block *block, int32_t *taken, int32_t *notTaken) { return; }
 
+private:
+   void addEdgeChecks(TR::CFGNode *f, TR::CFGNode *t);
+   bool shouldAddExceptionEdge(TR::CFGNode *f, TR::CFGNode *t);
+   void addExceptionEdgeToStructure(TR::CFGNode *f, TR::CFGNode *t, TR::CFGEdge *e);
+
 protected:
 
    TR::Compilation *_compilation;
@@ -312,6 +348,7 @@ protected:
    TR::CFGNode *_pStart;
    TR::CFGNode *_pEnd;
    TR::Region _structureRegion;
+   TR::Region *_cfgRegion;
    TR_Structure *_rootStructure;
 
    TR_LinkHead1<TR::CFGNode> _nodes;
